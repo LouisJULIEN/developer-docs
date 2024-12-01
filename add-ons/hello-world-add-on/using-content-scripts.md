@@ -19,13 +19,14 @@ In addition to [standard content scripts](https://developer.mozilla.org/en-US/do
 * compose scripts loaded into the editor of the message composer
 * message display scripts loaded into rendered messages when displayed to the user
 
-We will be using a message display script in this example. In order to register one, we use the [messageDisplayScripts](https://webextension-api.thunderbird.net/en/beta-mv2/messageDisplayScripts.html) API and add the following code to our background script:
+We will be using a message display script in this example. In order to register one, we use the [scripting.messageDisplay](https://webextension-api.thunderbird.net/en/128-esr-mv3/scripting.messageDisplay.html) API and add the following code to our background script:
 
 ```javascript
 // Register the message display script for all newly opened message tabs.
-messenger.messageDisplayScripts.register({
-    js: [{ file: "messageDisplay/message-content-script.js" }],
-    css: [{ file: "messageDisplay/message-content-styles.css" }],
+messenger.scripting.messageDisplay.registerScripts({
+    id: "12",
+    js: ["messageDisplay/message-content-script.js" ],
+    css: ["messageDisplay/message-content-styles.css" ],
 });
 
 // Inject script and CSS in all already open message tabs.
@@ -34,17 +35,17 @@ let messageTabs = openTabs.filter(
     tab => ["mail", "messageDisplay"].includes(tab.type)
 );
 for (let messageTab of messageTabs) {
-    browser.tabs.executeScript(messageTab.id, {
+    messenger.scripting.executeScript(messageTab.id, {
         file: "messageDisplay/message-content-script.js"
     })
-    browser.tabs.insertCSS(messageTab.id, {
+    messenger.scripting.insertCSS(messageTab.id, {
         file: "messageDisplay/message-content-styles.css"
     })
 }
 ```
 
 {% hint style="warning" %}
-The `messageDisplayScripts` API requires the <mark style="color:red;">`messagesModify`</mark> permission, which needs to be added to the `permissions` key in our `manifest.json` file.
+The `scripting.messageDisplay` API requires the <mark style="color:red;">`scripting`</mark> and <mark style="color:red;">`messagesRead`</mark> permissions, which need to be added to the `permissions` key in our `manifest.json` file.
 {% endhint %}
 
 Whenever a message is displayed to the user, the registered CSS file will be added and the registered JavaScript file will be injected and executed.
@@ -226,7 +227,7 @@ This is how our `manifest.json` should now look like:
 {% code title="manifest.json" %}
 ```json
 {
-    "manifest_version": 2,
+    "manifest_version": 3,
     "name": "Hello World Example",
     "description": "A basic Hello World example extension!",
     "version": "4.0",
@@ -252,12 +253,16 @@ This is how our `manifest.json` should now look like:
         "messagesUpdate",
         "accountsRead",
         "storage",
+        "scripting",
         "menus",
         "notifications",
         "messagesModify"
     ],
     "background": {
-        "page": "background.html"
+      "scripts": [
+        "background.js"
+      ],
+      "type": "module"
     },
     "icons": {
         "64": "images/internet.png",
@@ -319,9 +324,10 @@ await messenger.menus.onClicked.addListener(async (info, tab) => {
 });
 
 // Register the message display script.
-messenger.messageDisplayScripts.register({
-    js: [{ file: "messageDisplay/message-content-script.js" }],
-    css: [{ file: "messageDisplay/message-content-styles.css" }],
+messenger.scripting.messageDisplay.registerScripts({
+    id: "12",
+    js: ["messageDisplay/message-content-script.js" ],
+    css: ["messageDisplay/message-content-styles.css" ],
 });
 
 /**
